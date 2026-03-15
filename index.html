@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Cricket Pro</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        :root { --bg: #1a2236; --card: #242f4d; --blue: #3b82f6; --accent: #38bdf8; --red: #ef4444; --gold: #fbbf24; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; padding: 15px; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+        .container { width: 100%; max-width: 400px; background: var(--card); border-radius: 35px; padding: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); box-sizing: border-box; min-height: 620px; display: flex; flex-direction: column; position: relative; text-align: center; z-index: 10; }
+        .hidden { display: none !important; }
+        
+        /* 🔵 PERFECT CIRCLE 3D COIN */
+        .coin-container { perspective: 1000px; margin: 30px auto; width: 90px; height: 90px; }
+        .coin { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 2s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 50%; }
+        .coin div { position: absolute; width: 100%; height: 100%; border-radius: 50%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; border: 4px solid #b45309; box-sizing: border-box; }
+        .heads { background: var(--gold); color: #78350f; transform: translateZ(2px); }
+        .tails { background: #f59e0b; color: #78350f; transform: rotateY(180deg) translateZ(2px); }
+
+        /* ❌ FALLING WICKET */
+        .wkt-falling { position: fixed; font-size: 40px; font-weight: bold; z-index: 9999; pointer-events: none; animation: wktDrop 0.8s ease-in forwards; }
+        @keyframes wktDrop { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } }
+
+        /* EMOJI RAIN */
+        .emoji-drop { position: fixed; top: -50px; font-size: 35px; z-index: 100; animation: fall linear forwards; }
+        @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
+
+        button { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        .btn-main { background: var(--blue); color: white; }
+        .btn-sec { background: rgba(255,255,255,0.1); color: white; }
+        .btn-num { background: #2d3748; color: white; font-size: 20px; width: 22%; margin: 4px; border-radius: 10px; border: 1px solid #4a5568; }
+        .btn-num:active { transform: scale(0.9); background: var(--blue); }
+
+        .exit-btn { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; z-index: 11; width: auto; padding: 0; margin: 0; }
+        .score-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 20px; margin: 15px 0; }
+        .score-text { font-size: 55px; font-weight: bold; color: var(--accent); margin: 0; }
+        .summary-table { width: 100%; border-radius: 15px; overflow: hidden; margin: 15px 0; background: rgba(0,0,0,0.3); font-size: 14px; border-collapse: collapse; }
+        .summary-table th { padding: 10px; background: rgba(59, 130, 246, 0.2); color: var(--accent); }
+        .summary-table td { padding: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <button class="exit-btn hidden" id="global-exit" onclick="location.reload()">🚪◀️🏃</button>
+
+    <div id="screen-menu">
+        <h1 style="font-size: 22px; color: var(--accent);">HAND CRICKET PRO</h1>
+        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 20px; margin-bottom: 20px;">
+            <p style="font-size: 10px; margin-bottom: 8px; opacity: 0.7;">SELECT RUN LIMIT</p>
+            <div style="display: flex; gap: 8px;">
+                <button id="style-6" class="btn-main" onclick="setStyle(6)">1-6</button>
+                <button id="style-10" class="btn-sec" onclick="setStyle(10)">1-10</button>
+            </div>
+        </div>
+        <button class="btn-main" onclick="openModeSelect('cpu', 1)">VS COMPUTER</button>
+        <button class="btn-main" onclick="openModeSelect('local', 1)">1 VS 1 LOCAL</button>
+        <button class="btn-sec" onclick="openModeSelect('team2', 2)">2 VS 2 TEAMS</button>
+        <button class="btn-sec" onclick="openModeSelect('team3', 3)">3 VS 3 TEAMS</button>
+        <button class="btn-sec" style="color:var(--red);" onclick="openModeSelect('team4', 4)">4 VS 4 TEAMS</button>
+    </div>
+
+    <div id="screen-connect" class="hidden"><h3>CONNECTION</h3><button class="btn-main" onclick="setupGame('local')">OFFLINE</button><button class="btn-main" style="background:#8b5cf6" onclick="setupGame('wireless')">WIRELESS</button><button class="btn-sec" onclick="location.reload()">BACK</button></div>
+    <div id="screen-wireless" class="hidden"><h3>LOBBY</h3><div style="font-size: 30px; letter-spacing: 5px; background: #000; padding: 15px; border-radius: 10px; margin: 10px 0; color:var(--accent);" id="display-my-code">---</div><div style="display:flex; gap:10px; margin-bottom:10px;"><input type="text" id="name-wire" placeholder="My Name" style="flex:1; padding:10px; border-radius:5px;"><input type="color" id="color-wire" value="#38bdf8" style="width:50px; height:45px;"></div><input type="number" id="input-join-code" placeholder="Code" style="width:100%; padding:12px; margin-bottom:10px; border-radius:8px;"><button class="btn-main" onclick="joinWireless()">JOIN</button></div>
+    <div id="screen-setup" class="hidden"><h3>SETUP</h3><div style="display:flex; gap:10px; margin-bottom:10px;"><input type="text" id="name-p1" placeholder="P1 Name" style="flex:1; padding:10px; border-radius:5px;"><input type="color" id="color-p1" value="#38bdf8" style="width:50px; height:45px;"></div><div style="display:flex; gap:10px; margin-bottom:10px;"><input type="text" id="name-p2" placeholder="P2 Name" style="flex:1; padding:10px; border-radius:5px;"><input type="color" id="color-p2" value="#ef4444" style="width:50px; height:45px;"></div><button class="btn-main" onclick="confirmNames()">GO TO TOSS</button></div>
+
+    <div id="screen-toss" class="hidden">
+        <h3>TOSS</h3>
+        <div class="coin-container"><div id="coin" class="coin"><div class="heads">H</div><div class="tails">T</div></div></div>
+        <div id="toss-controls"><button class="btn-sec" onclick="startFlip('Heads')">HEADS</button><button class="btn-sec" onclick="startFlip('Tails')">TAILS</button></div>
+        <div id="choice-controls" class="hidden"><p id="winner-msg" style="color:var(--gold); font-weight:bold; margin-bottom:10px;"></p><button class="btn-main" onclick="setChoice(true)">BAT FIRST</button><button class="btn-main" style="background:#10b981" onclick="setChoice(false)">BOWL FIRST</button></div>
+        <p id="toss-wait" class="hidden" style="color:var(--accent);">Wait...</p>
+    </div>
+
+    <div id="screen-game" class="hidden">
+        <div id="ui-balls" style="font-size:12px; color:var(--gold); font-weight:bold; margin-bottom:5px;">BALLS: 0</div>
+        <div id="ui-wkt-row" style="display:flex; justify-content:center; gap:8px; height:35px;"></div>
+        <div class="score-box"><h2 class="score-text" id="ui-score">0</h2><div id="ui-target" style="color:var(--red); font-size:14px; font-weight:bold;"></div></div>
+        <div style="display:flex; justify-content:space-around; gap:10px;">
+            <div id="box-p1" style="padding:12px; flex:1; border-radius:15px; border-bottom:4px solid transparent; background:rgba(255,255,255,0.05);"><span id="role-p1" style="font-size:9px; font-weight:bold; display:block;">--</span><b id="label-p1" style="font-size:13px; opacity:0.8;">P1</b><br><i id="move-p1" style="font-size:32px; font-style:normal; font-weight:bold;">-</i></div>
+            <div id="box-p2" style="padding:12px; flex:1; border-radius:15px; border-bottom:4px solid transparent; background:rgba(255,255,255,0.05);"><span id="role-p2" style="font-size:9px; font-weight:bold; display:block;">--</span><b id="label-p2" style="font-size:13px; opacity:0.8;">P2</b><br><i id="move-p2" style="font-size:32px; font-style:normal; font-weight:bold;">-</i></div>
+        </div>
+        <div id="keypad" style="display:flex; flex-wrap:wrap; justify-content:center; margin-top:15px;"></div>
+    </div>
+
+    <div id="screen-over" class="hidden"><h1 style="font-size:50px; margin:10px 0;" id="over-emoji">🏆</h1><h2 id="winner-name" style="color:var(--gold);">WINNER</h2><table class="summary-table"><thead><tr><th>TEAM</th><th>SCORE</th><th>BALLS</th></tr></thead><tbody id="summary-body"></tbody></table><button class="btn-main" onclick="location.reload()">REMATCH</button></div>
+</div>
+
+<script>
+    let gMaxRun = 6, gMode, gPeer, gConn, isHost = false, myTeamNum = 1;
+    let gScore = 0, gWkts = 0, gMaxWkts = 1, gBalls = 0, currentPlayerScore = 0;
+    let gTarget = Infinity, gIsBatting = true, tossWinnerName = "";
+    let name1 = "P1", name2 = "P2", color1 = "#38bdf8", color2 = "#ef4444";
+    let p1Move = null, p2Move = null, stats = {t1:0, t2:0, b1:0, b2:0}, hasHitCentury = false;
+
+    // Fixed setStyle
+    function setStyle(limit) { 
+        gMaxRun = limit; 
+        document.getElementById('style-6').className = (limit === 6) ? "btn-main" : "btn-sec"; 
+        document.getElementById('style-10').className = (limit === 10) ? "btn-main" : "btn-sec"; 
+    }
+    
+    function goTo(id) { document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden')); const target = document.getElementById(id); if(target) target.classList.remove('hidden'); if(id==='screen-game'||id==='screen-over') document.getElementById('global-exit').classList.remove('hidden'); }
+    function openModeSelect(m, w) { gMode = m; gMaxWkts = w; if(m === 'cpu' || m === 'local') setupGame('local'); else goTo('screen-connect'); }
+    function setupGame(type) { if(type === 'wireless') { goTo('screen-wireless'); openWireless(); } else { document.getElementById('name-p2').value = (gMode === 'cpu') ? "Computer" : "P2"; goTo('screen-setup'); } }
+    function confirmNames() { name1 = document.getElementById('name-p1').value || "P1"; name2 = document.getElementById('name-p2').value || "P2"; color1 = document.getElementById('color-p1').value; color2 = document.getElementById('color-p2').value; goTo('screen-toss'); }
+
+    function openWireless() {
+        isHost = true; myTeamNum = 1; const code = Math.floor(10000 + Math.random() * 90000).toString();
+        gPeer = new Peer('hc-' + code);
+        gPeer.on('open', id => { document.getElementById('display-my-code').innerText = code; });
+        gPeer.on('connection', c => { gConn = c; name1 = document.getElementById('name-wire').value || "Host"; color1 = document.getElementById('color-wire').value; handleWireData(); });
+    }
+    function joinWireless() {
+        const code = document.getElementById('input-join-code').value;
+        isHost = false; myTeamNum = 2; name2 = document.getElementById('name-wire').value || "Joiner"; color2 = document.getElementById('color-wire').value;
+        gPeer = new Peer();
+        gPeer.on('open', () => { gConn = gPeer.connect('hc-' + code); gConn.on('open', () => { gConn.send({type:'join-ready', name:name2, color:color2}); handleWireData(); }); });
+    }
+
+    function handleWireData() {
+        gConn.on('data', data => {
+            if(data.type === 'join-ready') { name2 = data.name; color2 = data.color; gConn.send({type:'host-init', name: name1, color: color1, wkts: gMaxWkts, mode: gMode, limit: gMaxRun}); goTo('screen-toss'); }
+            else if(data.type === 'host-init') { name1 = data.name; color1 = data.color; gMaxWkts = data.wkts; gMode = data.mode; gMaxRun = data.limit; goTo('screen-toss'); }
+            else if(data.type === 'coin-stop') { document.getElementById('coin').style.transform = (data.res === 'Heads') ? 'rotateY(1800deg)' : 'rotateY(1980deg)'; tossWinnerName = data.winner; setTimeout(() => { if(tossWinnerName === name2) document.getElementById('choice-controls').classList.remove('hidden'); document.getElementById('winner-msg').innerText = tossWinnerName + " WON!"; }, 1000); }
+            else if(data.type === 'start') { gIsBatting = isHost ? data.hBat : !data.hBat; startGame(); }
+            else if(typeof data === 'number') { p2Move = data; checkMoves(); }
+        });
+    }
+
+    function startFlip(pick) {
+        const c = document.getElementById('coin'); document.getElementById('toss-controls').classList.add('hidden');
+        let res = Math.random() > 0.5 ? 'Heads' : 'Tails';
+        c.style.transform = (res === 'Heads') ? 'rotateY(1800deg)' : 'rotateY(1980deg)';
+        tossWinnerName = (pick === res) ? name1 : name2;
+        if(gConn) gConn.send({type:'coin-stop', res:res, winner:tossWinnerName});
+        setTimeout(() => { document.getElementById('choice-controls').classList.remove('hidden'); document.getElementById('winner-msg').innerText = tossWinnerName + " WON!"; }, 2000);
+    }
+    function setChoice(bat) {
+        if(!gConn) gIsBatting = (tossWinnerName === name1) ? bat : !bat;
+        else { if(isHost) { gIsBatting = (tossWinnerName === name1) ? bat : !bat; gConn.send({type:'start', hBat: gIsBatting}); } else { gIsBatting = bat; gConn.send({type:'start', hBat: !gIsBatting}); } }
+        startGame();
+    }
+
+    // Re-drawing keypad every game start
+    function startGame() {
+        goTo('screen-game');
+        const k = document.getElementById('keypad'); 
+        k.innerHTML = "";
+        for(let i=1; i<=gMaxRun; i++) { 
+            let b = document.createElement('button'); 
+            b.innerText = i; b.className = "btn-num";
+            b.onclick = () => pressNum(i); 
+            k.appendChild(b); 
+        }
+        setTimeout(() => {
+            document.getElementById('label-p1').innerText = name1; 
+            document.getElementById('label-p2').innerText = name2;
+            document.getElementById('box-p1').style.borderColor = color1; 
+            document.getElementById('box-p2').style.borderColor = color2;
+            updateWkts(); updateRoleLabels();
+        }, 50);
+    }
+
+    function pressNum(n) {
+        if(gMode === 'cpu') runLogic(n, Math.floor(Math.random()*gMaxRun)+1);
+        else if(gConn) { p1Move = n; gConn.send(n); document.getElementById('ui-msg').innerText = "Wait..."; checkMoves(); }
+        else { if(p1Move === null) { p1Move = n; document.getElementById('move-p1').innerText = "*"; } else { runLogic(p1Move, n); p1Move = null; } }
+    }
+    function checkMoves() { if(p1Move !== null && p2Move !== null) { runLogic(p1Move, p2Move); p1Move = null; p2Move = null; } }
+
+    function runLogic(m1, m2) {
+        gBalls++; document.getElementById('ui-balls').innerText = "BALLS: " + gBalls;
+        document.getElementById('move-p1').innerText = m1; document.getElementById('move-p2').innerText = m2;
+        if(parseInt(m1) === parseInt(m2)) {
+            dropWicket(); 
+            if(currentPlayerScore === 0) triggerEmojiRain(['🦆','🥚']); 
+            gWkts++; currentPlayerScore = 0; updateWkts();
+            if(gWkts >= gMaxWkts) handleInnings();
+        } else {
+            let runs = parseInt(gIsBatting ? m1 : m2);
+            gScore += runs; currentPlayerScore += runs;
+            document.getElementById('ui-score').innerText = gScore;
+            if(gScore >= 100 && !hasHitCentury) { hasHitCentury = true; triggerEmojiRain(['💯','🔥']); alert("SANSURY! 💯"); }
+            if(!gIsBatting && gScore >= gTarget) finishMatch(name2);
+        }
+    }
+
+    function dropWicket() {
+        const row = document.getElementById('ui-wkt-row');
+        const activeWkts = row.querySelectorAll('.wkt-sym');
+        if(activeWkts.length > 0) {
+            const rect = activeWkts[activeWkts.length - 1].getBoundingClientRect();
+            const f = document.createElement('div'); f.className = 'wkt-falling'; f.innerText = "#"; f.style.color = gIsBatting ? color1 : color2; f.style.left = rect.left + 'px'; f.style.top = rect.top + 'px';
+            document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
+        }
+    }
+
+    function handleInnings() {
+        if(gTarget === Infinity) {
+            if(isHost) { stats.t1 = gScore; stats.b1 = gBalls; } else { stats.t2 = gScore; stats.b2 = gBalls; }
+            gTarget = gScore + 1; gScore = 0; gWkts = 0; gBalls = 0; currentPlayerScore = 0; gIsBatting = !gIsBatting;
+            document.getElementById('ui-target').innerText = "TARGET: " + gTarget; document.getElementById('ui-score').innerText = "0";
+            updateWkts(); updateRoleLabels(); alert("Target: " + gTarget);
+        } else { if (gScore === gTarget - 1) finishMatch("TIE"); else finishMatch(name1); }
+    }
+
+    function finishMatch(winner) {
+        if(isHost) { stats.t2 = gScore; stats.b2 = gBalls; } else { stats.t1 = gScore; stats.b1 = gBalls; }
+        goTo('screen-over');
+        if(winner === "TIE") { document.getElementById('winner-name').innerText = "IT'S A TIE! 👔"; triggerEmojiRain(['👔','🤝']); }
+        else { document.getElementById('winner-name').innerText = winner.toUpperCase() + " WINS!"; let won = (winner===name1 && myTeamNum===1)||(winner===name2 && myTeamNum===2); if(!gConn) won=(winner===name1); triggerEmojiRain(won ? ['🥳','🎉','🔥'] : ['🤫','💨','🖐️']); }
+        document.getElementById('summary-body').innerHTML = `<tr><td>${name1}</td><td>${stats.t1}</td><td>${stats.b1}</td></tr><tr><td>${name2}</td><td>${stats.t2}</td><td>${stats.b2}</td></tr>`;
+    }
+
+    function triggerEmojiRain(set) { for(let i=0; i<30; i++) { setTimeout(() => { const e = document.createElement('div'); e.className = 'emoji-drop'; e.innerText = set[Math.floor(Math.random()*set.length)]; e.style.left = Math.random()*100+'vw'; e.style.animationDuration = (Math.random()*2+2)+'s'; document.body.appendChild(e); setTimeout(() => e.remove(), 4000); }, i*100); } }
+    function updateWkts() { const row = document.getElementById('ui-wkt-row'); if(!row) return; row.innerHTML = ""; for(let i=0; i<(gMaxWkts-gWkts); i++) { let s = document.createElement('span'); s.innerText = "#"; s.className = "wkt-sym"; s.style.color = gIsBatting ? color1 : color2; row.appendChild(s); } }
+    function updateRoleLabels() { const r1 = document.getElementById('role-p1'), r2 = document.getElementById('role-p2'); if(!r1 || !r2) return; r1.innerText = gIsBatting ? "🏏 BATTING" : "🥎 BOWLING"; r1.style.color = color1; r2.innerText = !gIsBatting ? "🏏 BATTING" : "🥎 BOWLING"; r2.style.color = color2; }
+</script>
+</body>
+</html>
