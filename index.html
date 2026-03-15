@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Cricket Pro</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --blue: #3b82f6; --accent: #38bdf8; --red: #ef4444; --gold: #fbbf24; }
+        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 10px; text-align: center; overflow-x: hidden; }
+        .container { width: 100%; max-width: 400px; background: var(--card); border-radius: 24px; padding: 20px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #334155; box-sizing: border-box; min-height: 600px; display: flex; flex-direction: column; }
+        .hidden { display: none !important; }
+        
+        .coin-container { perspective: 1000px; margin: 20px auto; width: 80px; height: 80px; }
+        .coin { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .coin div { position: absolute; width: 100%; height: 100%; border-radius: 50%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; border: 4px solid #b45309; }
+        .heads { background: var(--gold); color: #78350f; }
+        .tails { background: #f59e0b; color: #78350f; transform: rotateY(180deg); }
+        .flipping { animation: spin 0.2s infinite linear; }
+        @keyframes spin { 100% { transform: rotateY(360deg); } }
+
+        button { width: 100%; padding: 15px; margin: 8px 0; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-main { background: var(--blue); color: white; }
+        .btn-sec { background: transparent; border: 1px solid var(--blue); color: var(--accent); }
+        .btn-num { background: #2d3748; color: white; font-size: 20px; width: 22%; margin: 4px; border: 1px solid #4a5568; }
+        .btn-num:active { background: var(--blue); transform: scale(0.9); }
+        .score-box { background: var(--bg); padding: 15px; border-radius: 15px; margin: 10px 0; }
+        .score-text { font-size: 50px; font-weight: bold; color: var(--accent); margin: 0; }
+        input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--blue); background: var(--bg); color: white; text-align: center; margin: 5px 0; box-sizing: border-box; }
+        .profile-card { background: #0f172a; padding: 12px; border-radius: 15px; margin-bottom: 10px; border-bottom: 3px solid var(--blue); }
+        .room-code { font-size: 28px; letter-spacing: 4px; color: var(--accent); background: #000; padding: 12px; border-radius: 12px; border: 1px dashed var(--blue); margin: 10px 0; }
+        label { font-size: 11px; color: var(--accent); display: block; margin-bottom: 5px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="screen-menu">
+        <h1 style="color: var(--accent); margin-bottom: 5px;">CRICKET PRO</h1>
+        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 15px; margin-bottom: 10px;">
+            <p style="font-size: 10px;">RUN LIMIT</p>
+            <div style="display: flex; gap: 5px;">
+                <button id="style-6" class="btn-main" onclick="setStyle(6)">1-6</button>
+                <button id="style-10" class="btn-sec" onclick="setStyle(10)">1-10</button>
+            </div>
+        </div>
+        <button class="btn-main" onclick="openModeSelect('cpu', 1)">VS COMPUTER</button>
+        <button class="btn-main" onclick="openModeSelect('pvp', 1)">1 VS 1 MATCH</button>
+        <button class="btn-sec" onclick="openModeSelect('team2', 2)">2 VS 2 TEAMS</button>
+        <button class="btn-sec" onclick="openModeSelect('team3', 3)">3 VS 3 TEAMS</button>
+        <button class="btn-sec" style="color:var(--red); border-color:var(--red);" onclick="openModeSelect('team4', 4)">4 VS 4 TEAMS</button>
+    </div>
+
+    <div id="screen-connect" class="hidden">
+        <h3 id="mode-label">--</h3>
+        <button class="btn-main" onclick="setupGame('local')">OFFLINE (LOCAL)</button>
+        <button class="btn-main" style="background:#8b5cf6" onclick="setupGame('wireless')">WIRELESS (ONLINE)</button>
+        <button class="btn-sec" onclick="location.reload()">BACK</button>
+    </div>
+
+    <div id="screen-setup" class="hidden">
+        <h3 id="setup-header">SETUP</h3>
+        <div class="profile-card">
+            <label id="label-name-p1">TEAM 1 NAME</label>
+            <input type="text" id="name-p1" placeholder="Enter Name">
+            <input type="color" id="color-p1" value="#38bdf8" style="height:40px;">
+        </div>
+        <div class="profile-card">
+            <label id="label-name-p2">TEAM 2 NAME</label>
+            <input type="text" id="name-p2" placeholder="Enter Name">
+            <input type="color" id="color-p2" value="#ef4444" style="height:40px;">
+        </div>
+        <button class="btn-main" onclick="confirmNames()">GO TO TOSS</button>
+        <button class="btn-sec" onclick="location.reload()">BACK TO MENU</button>
+    </div>
+
+    <div id="screen-wireless" class="hidden">
+        <h3>WIRELESS LOBBY</h3>
+        <div class="room-code" id="display-my-code">GENERATING...</div>
+        <div class="profile-card">
+            <label>YOUR NAME / TEAM</label>
+            <input type="text" id="name-wire" placeholder="My Team">
+            <input type="color" id="color-wire" value="#38bdf8" style="height:40px;">
+        </div>
+        <input type="number" id="input-join-code" placeholder="Friend's Code">
+        <button class="btn-main" onclick="joinWireless()">JOIN FRIEND</button>
+        <button class="btn-sec" onclick="location.reload()">BACK</button>
+    </div>
+
+    <div id="screen-toss" class="hidden">
+        <h3 id="toss-status">Toss Time!</h3>
+        <div class="coin-container"><div id="coin" class="coin"><div class="heads">H</div><div class="tails">T</div></div></div>
+        <div id="toss-controls">
+            <button class="btn-sec" onclick="startFlip('Heads')">HEADS</button>
+            <button class="btn-sec" onclick="startFlip('Tails')">TAILS</button>
+        </div>
+        <div id="choice-controls" class="hidden">
+            <p id="winner-msg" style="color:var(--gold); margin-bottom:10px;"></p>
+            <button class="btn-main" onclick="setChoice(true)">BAT FIRST</button>
+            <button class="btn-main" style="background:#10b981" onclick="setChoice(false)">BOWL FIRST</button>
+        </div>
+        <p id="toss-wait" class="hidden" style="color:var(--accent);">Wait for your friend to flip...</p>
+    </div>
+
+    <div id="screen-game" class="hidden">
+        <div id="ui-mode-info" style="font-size:10px; opacity:0.5;">--</div>
+        <div id="ui-wkt-row" style="display:flex; justify-content:center; gap:5px; margin:5px;"></div>
+        <div class="score-box">
+            <h2 class="score-text" id="ui-score">0</h2>
+            <div id="ui-target" style="color:var(--red); font-size:14px; font-weight:bold;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-around; margin-bottom:10px;">
+            <div id="box-p1" style="padding:10px; border-radius:12px; flex:1; margin:2px; background:rgba(255,255,255,0.05);">
+                <div id="label-p1" style="font-size:11px; font-weight:bold;">T1</div>
+                <b id="move-p1" style="font-size:24px;">-</b>
+            </div>
+            <div id="box-p2" style="padding:10px; border-radius:12px; flex:1; margin:2px; background:rgba(255,255,255,0.05);">
+                <div id="label-p2" style="font-size:11px; font-weight:bold;">T2</div>
+                <b id="move-p2" style="font-size:24px;">-</b>
+            </div>
+        </div>
+        <p id="ui-msg" style="color:#facc15; font-weight:bold; height:20px;">Pick a number!</p>
+        <div id="keypad" style="display:flex; flex-wrap:wrap; justify-content:center;"></div>
+    </div>
+
+    <div id="screen-over" class="hidden">
+        <h1 style="font-size:60px;">🏆</h1>
+        <h2 id="winner-name">WINNER</h2>
+        <button class="btn-main" onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+</div>
+
+<script>
+    let gMaxRun = 6, gMode, gPeer, gConn, isHost = false;
+    let gScore = 0, gWkts = 0, gMaxWkts = 1;
+    let gTarget = Infinity, gIsBatting = true, tossWinnerName = "";
+    let name1 = "Team 1", name2 = "Team 2", color1 = "#38bdf8", color2 = "#ef4444";
+    let p1Move = null, p2Move = null;
+
+    function setStyle(limit) { gMaxRun = limit; document.getElementById('style-6').className = (limit === 6) ? "btn-main" : "btn-sec"; document.getElementById('style-10').className = (limit === 10) ? "btn-main" : "btn-sec"; }
+    function goTo(id) { document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+    
+    function openModeSelect(m, w) { 
+        gMode = m; gMaxWkts = w; 
+        if(m === 'cpu') { setupGame('local'); } else { goTo('screen-connect'); } 
+    }
+
+    function setupGame(type) { 
+        if(type === 'wireless') { goTo('screen-wireless'); openWireless(); } 
+        else { document.getElementById('name-p2').value = (gMode === 'cpu') ? "Computer" : ""; goTo('screen-setup'); } 
+    }
+
+    function confirmNames() { 
+        name1 = document.getElementById('name-p1').value || "Team 1"; 
+        name2 = document.getElementById('name-p2').value || "Team 2"; 
+        color1 = document.getElementById('color-p1').value; 
+        color2 = document.getElementById('color-p2').value; 
+        goTo('screen-toss'); 
+    }
+
+    function startFlip(userPick) { 
+        // Sync coin start
+        if(gConn) gConn.send({type:'coin-spin', pick: userPick});
+        
+        const coin = document.getElementById('coin'); 
+        document.getElementById('toss-controls').classList.add('hidden'); 
+        coin.classList.add('flipping'); 
+        
+        setTimeout(() => { 
+            coin.classList.remove('flipping'); 
+            let result = Math.random() > 0.5 ? 'Heads' : 'Tails'; 
+            let won = (userPick === result); 
+            coin.style.transform = (result === 'Heads') ? 'rotateY(0deg)' : 'rotateY(180deg)'; 
+            
+            if(gConn) gConn.send({type:'coin-result', res: result});
+
+            setTimeout(() => { 
+                tossWinnerName = won ? name1 : name2; 
+                if(gMode === 'cpu' && !won) { 
+                    let cpuChoice = Math.random() > 0.5;
+                    alert("Computer won and chose to " + (cpuChoice ? "BAT" : "BOWL"));
+                    gIsBatting = !cpuChoice; startGame(); 
+                } else { 
+                    document.getElementById('choice-controls').classList.remove('hidden'); 
+                    document.getElementById('winner-msg').innerText = tossWinnerName + " WON!"; 
+                } 
+            }, 1000); 
+        }, 2000); 
+    }
+
+    function setChoice(batting) { 
+        // If I won the toss, gIsBatting is what I chose. If friend won, it's opposite.
+        if(tossWinnerName === name1) gIsBatting = batting; else gIsBatting = !batting;
+        if(gConn) gConn.send({type:'final-choice', bat: gIsBatting});
+        startGame(); 
+    }
+    
+    function startGame() { 
+        document.getElementById('ui-mode-info').innerText = gMaxRun + " LIMIT | " + gMaxWkts + " WKTS";
+        document.getElementById('label-p1').innerText = name1; 
+        document.getElementById('label-p2').innerText = name2;
+        document.getElementById('box-p1').style.border = "2px solid "+color1; 
+        document.getElementById('box-p2').style.border = "2px solid "+color2; 
+        const keypad = document.getElementById('keypad'); keypad.innerHTML = ""; 
+        for(let i=1; i<=gMaxRun; i++) { 
+            let b = document.createElement('button'); b.innerText = i; b.className = "btn-num"; 
+            b.onclick = () => pressNum(i); keypad.appendChild(b); 
+        } 
+        updateWickets(); goTo('screen-game'); 
+    }
+
+    function updateWickets() { 
+        const row = document.getElementById('ui-wkt-row'); row.innerHTML = ""; 
+        let teamColor = gIsBatting ? color1 : color2; 
+        for(let i=0; i<gMaxWkts; i++) { 
+            let s = document.createElement('span'); s.innerText = "#"; 
+            s.className = "wkt-sym" + (i >= gWkts ? " wkt-active" : ""); 
+            s.style.color = teamColor; row.appendChild(s); 
+        } 
+    }
+
+    function openWireless() {
+        isHost = true; const code = Math.floor(10000 + Math.random() * 90000).toString();
+        gPeer = new Peer('hc-' + code);
+        gPeer.on('open', id => { document.getElementById('display-my-code').innerText = code; });
+        gPeer.on('connection', c => {
+            gConn = c; name1 = document.getElementById('name-wire').value || "Host";
+            color1 = document.getElementById('color-wire').value;
+            handleWireData();
+        });
+    }
+
+    function joinWireless() {
+        const code = document.getElementById('input-join-code').value;
+        isHost = false; name2 = document.getElementById('name-wire').value || "Joiner";
+        color2 = document.getElementById('color-wire').value;
+        gPeer = new Peer();
+        gPeer.on('open', () => {
+            gConn = gPeer.connect('hc-' + code);
+            gConn.on('open', () => { 
+                gConn.send({type:'setup', name:name2, color:color2, wkts:gMaxWkts, mode:gMode, limit:gMaxRun}); 
+                handleWireData(); 
+            });
+        });
+    }
+
+    function handleWireData() {
+        gConn.on('data', data => {
+            if(data.type === 'setup') {
+                // Swap names for host side
+                name2 = data.name; color2 = data.color; 
+                gMaxWkts = data.wkts; gMode = data.mode; gMaxRun = data.limit;
+                gConn.send({type:'setup-back', name:name1, color:color1});
+                goTo('screen-toss');
+            }
+            else if(data.type === 'setup-back') {
+                // Joiner gets Host's names
+                name1 = data.name; color1 = data.color;
+                document.getElementById('toss-controls').classList.add('hidden');
+                document.getElementById('toss-wait').classList.remove('hidden');
+                goTo('screen-toss');
+            }
+            else if(data.type === 'coin-spin') {
+                document.getElementById('toss-wait').innerText = "Friend is flipping...";
+                document.getElementById('coin').classList.add('flipping');
+            }
+            else if(data.type === 'coin-result') {
+                document.getElementById('coin').classList.remove('flipping');
+                document.getElementById('coin').style.transform = (data.res === 'Heads') ? 'rotateY(0deg)' : 'rotateY(180deg)';
+            }
+            else if(data.type === 'final-choice') {
+                gIsBatting = !data.bat; // If friend bats, I bowl
+                startGame();
+            }
+            else if(typeof data === 'number') { p2Move = data; checkMoves(); }
+        });
+    }
+
+    function pressNum(n) {
+        if(gMode === 'cpu') { runLogic(n, Math.floor(Math.random()*gMaxRun)+1); }
+        else if(gConn) {
+            p1Move = n; gConn.send(n);
+            document.getElementById('ui-msg').innerText = "Waiting...";
+            checkMoves();
+        } else {
+            if(p1Move === null) { p1Move = n; document.getElementById('ui-msg').innerText = "Pass Phone!"; document.getElementById('move-p1').innerText = "*"; }
+            else { runLogic(p1Move, n); p1Move = null; }
+        }
+    }
+
+    function checkMoves() { if(p1Move !== null && p2Move !== null) { runLogic(p1Move, p2Move); p1Move = null; p2Move = null; } }
+
+    function runLogic(m1, m2) {
+        document.getElementById('move-p1').innerText = m1; document.getElementById('move-p2').innerText = m2;
+        if(parseInt(m1) === parseInt(m2)) {
+            gWkts++; updateWickets();
+            if(gWkts >= gMaxWkts) handleInnings(); else document.getElementById('ui-msg').innerText = "OUT!";
+        } else {
+            let runs = gIsBatting ? m1 : m2;
+            gScore += parseInt(runs);
+            document.getElementById('ui-score').innerText = gScore;
+            if(!gIsBatting && gScore >= gTarget) finishMatch(name2);
+        }
+    }
+
+    function handleInnings() {
+        if(gTarget === Infinity) {
+            gTarget = gScore + 1; gScore = 0; gWkts = 0; gIsBatting = !gIsBatting;
+            document.getElementById('ui-target').innerText = "TARGET: " + gTarget;
+            document.getElementById('ui-score').innerText = "0"; updateWickets();
+            alert("Target: " + gTarget);
+        } else { finishMatch(name1); }
+    }
+
+    function finishMatch(w) { goTo('screen-over'); document.getElementById('winner-name').innerText = w.toUpperCase(); }
+</script>
+</body>
+</html>
